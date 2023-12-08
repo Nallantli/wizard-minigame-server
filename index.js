@@ -243,11 +243,11 @@ function startBattleSequence(id) {
 	runningGames[id].turnState.battleIndex = 0;
 	propagateState(id);
 	const animationData = doRound(id);
+	checkWin(id);
 	runningGames[id].sockets.forEach(({ ws }) => ws.send(JSON.stringify({
 		action: 'BATTLE_ANIMATION_DATA',
 		...animationData
 	})));
-	checkWin(id);
 }
 
 function unreadyAll(id) {
