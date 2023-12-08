@@ -196,6 +196,10 @@ function startGame(id) {
 	runningGames[id].leftStart = [];
 	runningGames[id].rightStart = [];
 
+	runningGames[id].sockets.forEach(({ ws }) => ws.send(JSON.stringify({
+		action: 'START_BATTLE',
+	})));
+
 	for (let i = 0; i < runningGames[id].turnState.battleData.length; i++) {
 		if (runningGames[id].turnState.battleData[i] === null) {
 			continue;
