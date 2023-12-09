@@ -5,7 +5,7 @@ function criticalChance(cra, crb) {
 	return ((diff - 32) / (2 * (16 + Math.abs(diff - 32))) + 0.5) * (Math.min(cra, 100) / 100);
 }
 
-export function calculateDamages(spell, caster, victim) {
+export function calculateDamages(spell, enchantments, caster, victim) {
 	if (Math.random() > spell.chance) {
 		return 'FAILED';
 	}
@@ -32,7 +32,7 @@ export function calculateDamages(spell, caster, victim) {
 		isCritical,
 		usedBladeIds,
 		damages: spell.damages.map(d => {
-			let base = d.damage !== undefined ? d.damage : (Math.random() * (d.maxDamage - d.minDamage) + d.minDamage);
+			let base = (d.damage !== undefined ? d.damage : (Math.random() * (d.maxDamage - d.minDamage) + d.minDamage)) - (enchantments?.damage ? enchantments.damage / spell.damages.length : 0);
 			let usedShieldIds = [];
 			let currentElement = d.element;
 			for (let i = shields.length - 1; i >= 0; i--) {
@@ -64,7 +64,7 @@ export function calculateDamages(spell, caster, victim) {
 
 export function iterateSpell(casterIndex, victimIndices, spellIndex, battleData, calculatedDamages) {
 	if (calculatedDamages.length === 1 && calculatedDamages[0] === 'FAILED') {
-		const spellId = battleData[casterIndex].hand[spellIndex];
+		const spellId = battleData[casterIndex].hand[spellIndex].id;
 		battleData[casterIndex].deck = [
 			spellId,
 			...battleData[casterIndex].deck
@@ -72,7 +72,7 @@ export function iterateSpell(casterIndex, victimIndices, spellIndex, battleData,
 		battleData[casterIndex].hand.splice(spellIndex, 1);
 		return battleData;
 	}
-	const spell = spells[battleData[casterIndex].hand[spellIndex]];
+	const spell = spells[battleData[casterIndex].hand[spellIndex].id];
 	switch (spell.type) {
 		case 'HEALING_BASIC':
 			spell.heals.forEach(({ heal }) => battleData[victimIndices[0]].entity.health += heal);

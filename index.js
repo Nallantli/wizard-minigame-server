@@ -124,11 +124,13 @@ function doRound(id) {
 			.filter(i => runningGames[id].turnState.battleData[i] !== null && runningGames[id].turnState.battleData[i].entity.health > 0);
 		if (victimIndices.length > 0 && runningGames[id].turnState.battleData[runningGames[id].turnState.battleIndex].entity.health > 0) {
 			const spellIndex = runningGames[id].turnState.selectedCards[runningGames[id].turnState.battleIndex];
-			const spell = spells[runningGames[id].turnState.battleData[runningGames[id].turnState.battleIndex].hand[spellIndex]];
+			const spell = spells[runningGames[id].turnState.battleData[runningGames[id].turnState.battleIndex].hand[spellIndex].id];
+			const enchantments = turnState.battleData[turnState.battleIndex].hand[spellIndex].enchantments;
 			const calculatedDamages = victimIndices
 				.map(i => runningGames[id].turnState.battleData[i])
 				.map(victimData => calculateDamages(
 					spell,
+					enchantments,
 					runningGames[id].turnState.battleData[runningGames[id].turnState.battleIndex],
 					victimData));
 			animationData.push({
@@ -161,7 +163,7 @@ function doRound(id) {
 			if (!cardId) {
 				break;
 			}
-			runningGames[id].turnState.battleData[i].hand.push(cardId);
+			runningGames[id].turnState.battleData[i].hand.push({ id: cardId });
 		}
 	}
 
@@ -220,7 +222,7 @@ function startGame(id) {
 			if (!card) {
 				break;
 			}
-			hand.push(card);
+			hand.push({ id: card });
 		}
 		runningGames[id].turnState.battleData[i].hand = hand;
 	}
@@ -412,7 +414,7 @@ wss.on('connection', function connection(ws) {
 				}
 				break;
 			}
-			case 'DISCARD_CARD': {
+			case 'UPDATE_HAND': {
 				const { id, hand } = data;
 				if (!basicCheck(ws, id)) {
 					return;
