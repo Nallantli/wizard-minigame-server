@@ -6,14 +6,14 @@ function criticalChance(cra, crb) {
 }
 
 export function calculateDamages(spell, enchantments, caster, victim) {
-	if (Math.random() > spell.chance) {
+	if (Math.random() > spell.chance + (enchantments?.accuracy || 0)) {
 		return 'FAILED';
 	}
 	if (spell.type !== 'ATTACK_ALL' && spell.type !== 'ATTACK_BASIC') {
 		return {};
 	}
 
-	const isCritical = Math.random() <= criticalChance(caster.entity.criticalRating, victim.entity.criticalRating);
+	const isCritical = spell.element === caster.entity.element && Math.random() <= criticalChance(caster.entity.criticalRating, victim.entity.criticalRating);
 
 	const shields = victim.shields;
 	const blades = caster.blades;
