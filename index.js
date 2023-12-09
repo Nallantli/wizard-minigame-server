@@ -125,7 +125,7 @@ function doRound(id) {
 		if (victimIndices.length > 0 && runningGames[id].turnState.battleData[runningGames[id].turnState.battleIndex].entity.health > 0) {
 			const spellIndex = runningGames[id].turnState.selectedCards[runningGames[id].turnState.battleIndex];
 			const spell = spells[runningGames[id].turnState.battleData[runningGames[id].turnState.battleIndex].hand[spellIndex].id];
-			const enchantments = runningGames[id].turnState.battleData[turnState.battleIndex].hand[spellIndex].enchantments;
+			const enchantments = runningGames[id].turnState.battleData[runningGames[id].turnState.battleIndex].hand[spellIndex].enchantments;
 			const calculatedDamages = victimIndices
 				.map(i => runningGames[id].turnState.battleData[i])
 				.map(victimData => calculateDamages(
