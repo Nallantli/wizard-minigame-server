@@ -365,12 +365,12 @@ wss.on('connection', function connection(ws) {
 				break;
 			}
 			case 'READY_UP': {
-				const { id, battleDeck } = data;
+				const { id, deck } = data;
 				if (!basicCheck(ws, id)) {
 					return;
 				}
 				runningGames[id].sockets.find(e => e.ws === ws).isReady = true;
-				setDeck(id, runningGames[id].sockets.find(e => e.ws === ws).pos, battleDeck.map(id => ({ id })));
+				setDeck(id, runningGames[id].sockets.find(e => e.ws === ws).pos, deck.map(id => ({ id })));
 				if (runningGames[id].sockets.find(e => !e.isReady) === undefined) {
 					startGame(id);
 				}
