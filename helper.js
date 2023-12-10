@@ -64,10 +64,10 @@ export function calculateDamages(spell, enchantments, caster, victim) {
 
 export function iterateSpell(casterIndex, victimIndices, spellIndex, battleData, calculatedDamages) {
 	if (calculatedDamages.length === 1 && calculatedDamages[0] === 'FAILED') {
-		const spellId = battleData[casterIndex].hand[spellIndex].id;
-		battleData[casterIndex].deck = [
-			spellId,
-			...battleData[casterIndex].deck
+		const handSpell = battleData[casterIndex].hand[spellIndex];
+		battleData[casterIndex].battleDeck = [
+			handSpell,
+			...battleData[casterIndex].battleDeck
 		];
 		battleData[casterIndex].hand.splice(spellIndex, 1);
 		return battleData;

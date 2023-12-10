@@ -112,8 +112,8 @@ function generateBattleEntity(entity, isAI) {
 	}
 }
 
-function setDeck(id, pos, deck) {
-	runningGames[id].turnState.battleData[pos].deck = deck;
+function setDeck(id, pos, battleDeck) {
+	runningGames[id].turnState.battleData[pos].battleDeck = battleDeck;
 }
 
 function doRound(id) {
@@ -159,11 +159,11 @@ function doRound(id) {
 			continue;
 		}
 		while (runningGames[id].turnState.battleData[i].hand.length < 7) {
-			const cardId = runningGames[id].turnState.battleData[i].deck.pop();
-			if (!cardId) {
+			const handSpell = runningGames[id].turnState.battleData[i].battleDeck.pop();
+			if (!handSpell) {
 				break;
 			}
-			runningGames[id].turnState.battleData[i].hand.push({ id: cardId });
+			runningGames[id].turnState.battleData[i].hand.push(handSpell);
 		}
 	}
 
@@ -213,16 +213,16 @@ function startGame(id) {
 			runningGames[id].rightStart.push({ ws: runningGames[id].sockets.find(({ pos }) => pos === i).ws, entity: runningGames[id].turnState.battleData[i].entity });
 		}
 
-		const deck = runningGames[id].turnState.battleData[i].deck
-		shuffleArray(deck);
+		const battleDeck = runningGames[id].turnState.battleData[i].battleDeck
+		shuffleArray(battleDeck);
 
 		let hand = [];
 		for (let i = 0; i < 7; i++) {
-			const card = deck.pop();
+			const card = battleDeck.pop();
 			if (!card) {
 				break;
 			}
-			hand.push({ id: card });
+			hand.push(card);
 		}
 		runningGames[id].turnState.battleData[i].hand = hand;
 	}
@@ -365,12 +365,12 @@ wss.on('connection', function connection(ws) {
 				break;
 			}
 			case 'READY_UP': {
-				const { id, deck } = data;
+				const { id, battleDeck } = data;
 				if (!basicCheck(ws, id)) {
 					return;
 				}
 				runningGames[id].sockets.find(e => e.ws === ws).isReady = true;
-				setDeck(id, runningGames[id].sockets.find(e => e.ws === ws).pos, deck);
+				setDeck(id, runningGames[id].sockets.find(e => e.ws === ws).pos, battleDeck.map(id => ({ id })));
 				if (runningGames[id].sockets.find(e => !e.isReady) === undefined) {
 					startGame(id);
 				}
