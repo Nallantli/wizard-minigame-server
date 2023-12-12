@@ -285,6 +285,117 @@ server.listen(8080);
 
 const wss = new WebSocketServer({ server });
 
+function processRequest(data) {
+	switch (data.action) {
+		case 'CREATE_GAME': {
+			const { entity } = data;
+			const id = createGame(ws, entity);
+			console.log(`${new Date(Date.now()).toISOString()} | Created Game: ${id} (Total Current Games: ${Object.entries(runningGames).length})`);
+			propagateState(id);
+			break;
+		}
+		case 'JOIN_GAME': {
+			const { id, entity } = data;
+			if (joinGame(id, ws, entity)) {
+				unreadyAll(id);
+				propagateState(id);
+			} else {
+				ws.send(JSON.stringify({
+					action: "JOIN_FAILURE",
+					message: `Cannot join game '${id}'`
+				}));
+				return;
+			}
+			break;
+		}
+		case 'MOVE_SELF': {
+			const { id, pos } = data;
+			if (!basicCheck(ws, id)) {
+				return;
+			}
+			if (runningGames[id].turnState.battleData[pos] !== null) {
+				ws.send(JSON.stringify({
+					action: "MOVE_SELF_FAILURE",
+					message: `Position ${pos} is already occupied`
+				}));
+				return;
+			}
+			const oldPos = runningGames[id].sockets.find(e => e.ws === ws).pos;
+			runningGames[id].sockets.find(e => e.ws === ws).pos = pos;
+			runningGames[id].turnState.battleData[pos] = runningGames[id].turnState.battleData[oldPos];
+			runningGames[id].turnState.battleData[oldPos] = null;
+			for (let i = 0; i < 8; i++) {
+				if (runningGames[id].turnState.battleData[i] !== null) {
+					shoveDownEntity(id, i);
+				}
+			}
+			unreadyAll(id);
+			propagateState(id);
+			break;
+		}
+		case 'READY_UP': {
+			const { id, deck } = data;
+			if (!basicCheck(ws, id)) {
+				return;
+			}
+			runningGames[id].sockets.find(e => e.ws === ws).isReady = true;
+			setDeck(id, runningGames[id].sockets.find(e => e.ws === ws).pos, deck.map(id => ({ id })));
+			if (runningGames[id].sockets.find(e => !e.isReady) === undefined) {
+				startGame(id);
+			}
+			propagateState(id);
+			break;
+		}
+		case 'READY_DOWN': {
+			const { id } = data;
+			if (!basicCheck(ws, id)) {
+				return;
+			}
+			runningGames[id].sockets.find(e => e.ws === ws).isReady = false;
+			propagateState(id);
+			break;
+		}
+		case 'SELECT_CARD': {
+			const { id, card } = data;
+			if (!basicCheck(ws, id)) {
+				return;
+			}
+			const playerIndex = runningGames[id].sockets.find(e => e.ws === ws).pos;
+			runningGames[id].turnState.selectedCards[playerIndex] = card;
+			if (areAllPlayersReady(id)) {
+				startBattleSequence(id);
+			} else {
+				propagateState(id);
+			}
+			break;
+		}
+		case 'SELECT_VICTIMS': {
+			const { id, victims } = data;
+			if (!basicCheck(ws, id)) {
+				return;
+			}
+			const playerIndex = runningGames[id].sockets.find(e => e.ws === ws).pos;
+			runningGames[id].turnState.selectedVictims[playerIndex] = victims;
+			if (areAllPlayersReady(id)) {
+				startBattleSequence(id);
+			} else {
+				propagateState(id);
+			}
+			break;
+		}
+		case 'UPDATE_HAND': {
+			const { id, hand } = data;
+			if (!basicCheck(ws, id)) {
+				return;
+			}
+			const playerIndex = runningGames[id].sockets.find(e => e.ws === ws).pos;
+			runningGames[id].turnState.battleData[playerIndex].hand = hand;
+			propagateState(id);
+			break;
+		}
+	}
+}
+
 wss.on('connection', function connection(ws) {
 	ws.on('close', (code, desc) => {
 		console.log(`${new Date(Date.now()).toISOString()} | Closed connection`, code, desc);
@@ -318,115 +429,8 @@ wss.on('connection', function connection(ws) {
 		}
 	});
 	ws.on('message', (raw) => {
-		const data = JSON.parse(raw);
-		switch (data.action) {
-			case 'CREATE_GAME': {
-				const { entity } = data;
-				const id = createGame(ws, entity);
-				console.log(`${new Date(Date.now()).toISOString()} | Created Game: ${id} (Total Current Games: ${Object.entries(runningGames).length})`);
-				propagateState(id);
-				break;
-			}
-			case 'JOIN_GAME': {
-				const { id, entity } = data;
-				if (joinGame(id, ws, entity)) {
-					unreadyAll(id);
-					propagateState(id);
-				} else {
-					ws.send(JSON.stringify({
-						action: "JOIN_FAILURE",
-						message: `Cannot join game '${id}'`
-					}));
-					return;
-				}
-				break;
-			}
-			case 'MOVE_SELF': {
-				const { id, pos } = data;
-				if (!basicCheck(ws, id)) {
-					return;
-				}
-				if (runningGames[id].turnState.battleData[pos] !== null) {
-					ws.send(JSON.stringify({
-						action: "MOVE_SELF_FAILURE",
-						message: `Position ${pos} is already occupied`
-					}));
-					return;
-				}
-				const oldPos = runningGames[id].sockets.find(e => e.ws === ws).pos;
-				runningGames[id].sockets.find(e => e.ws === ws).pos = pos;
-				runningGames[id].turnState.battleData[pos] = runningGames[id].turnState.battleData[oldPos];
-				runningGames[id].turnState.battleData[oldPos] = null;
-				for (let i = 0; i < 8; i++) {
-					if (runningGames[id].turnState.battleData[i] !== null) {
-						shoveDownEntity(id, i);
-					}
-				}
-				unreadyAll(id);
-				propagateState(id);
-				break;
-			}
-			case 'READY_UP': {
-				const { id, deck } = data;
-				if (!basicCheck(ws, id)) {
-					return;
-				}
-				runningGames[id].sockets.find(e => e.ws === ws).isReady = true;
-				setDeck(id, runningGames[id].sockets.find(e => e.ws === ws).pos, deck.map(id => ({ id })));
-				if (runningGames[id].sockets.find(e => !e.isReady) === undefined) {
-					startGame(id);
-				}
-				propagateState(id);
-				break;
-			}
-			case 'READY_DOWN': {
-				const { id } = data;
-				if (!basicCheck(ws, id)) {
-					return;
-				}
-				runningGames[id].sockets.find(e => e.ws === ws).isReady = false;
-				propagateState(id);
-				break;
-			}
-			case 'SELECT_CARD': {
-				const { id, card } = data;
-				if (!basicCheck(ws, id)) {
-					return;
-				}
-				const playerIndex = runningGames[id].sockets.find(e => e.ws === ws).pos;
-				runningGames[id].turnState.selectedCards[playerIndex] = card;
-				if (areAllPlayersReady(id)) {
-					startBattleSequence(id);
-				} else {
-					propagateState(id);
-				}
-				break;
-			}
-			case 'SELECT_VICTIMS': {
-				const { id, victims } = data;
-				if (!basicCheck(ws, id)) {
-					return;
-				}
-				const playerIndex = runningGames[id].sockets.find(e => e.ws === ws).pos;
-				runningGames[id].turnState.selectedVictims[playerIndex] = victims;
-				if (areAllPlayersReady(id)) {
-					startBattleSequence(id);
-				} else {
-					propagateState(id);
-				}
-				break;
-			}
-			case 'UPDATE_HAND': {
-				const { id, hand } = data;
-				if (!basicCheck(ws, id)) {
-					return;
-				}
-				const playerIndex = runningGames[id].sockets.find(e => e.ws === ws).pos;
-				runningGames[id].turnState.battleData[playerIndex].hand = hand;
-				propagateState(id);
-				break;
-			}
-		}
+		const dataArray = JSON.parse(raw);
+		dataArray.forEach(processRequest);
 	});
 
 	ws.send(JSON.stringify({
