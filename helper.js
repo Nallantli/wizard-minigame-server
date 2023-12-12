@@ -6,9 +6,6 @@ function criticalChance(cra, crb) {
 }
 
 export function calculateDamages(spell, enchantments, caster, victim) {
-	if (Math.random() > spell.chance + (enchantments?.accuracy || 0)) {
-		return 'FAILED';
-	}
 	if (spell.type !== 'ATTACK_ALL' && spell.type !== 'ATTACK_BASIC') {
 		return {};
 	}

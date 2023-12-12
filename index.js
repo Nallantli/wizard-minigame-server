@@ -126,13 +126,15 @@ function doRound(id) {
 			const spellIndex = runningGames[id].turnState.selectedCards[runningGames[id].turnState.battleIndex];
 			const spell = spells[runningGames[id].turnState.battleData[runningGames[id].turnState.battleIndex].hand[spellIndex].id];
 			const enchantments = runningGames[id].turnState.battleData[runningGames[id].turnState.battleIndex].hand[spellIndex].enchantments;
-			const calculatedDamages = victimIndices
-				.map(i => runningGames[id].turnState.battleData[i])
-				.map(victimData => calculateDamages(
-					spell,
-					enchantments,
-					runningGames[id].turnState.battleData[runningGames[id].turnState.battleIndex],
-					victimData));
+			const doesSpellHit = Math.random() <= spell.chance + (enchantments?.accuracy || 0);
+			const calculatedDamages = doesSpellHit
+				? victimIndices.map(i => runningGames[id].turnState.battleData[i])
+					.map(victimData => calculateDamages(
+						spell,
+						enchantments,
+						runningGames[id].turnState.battleData[runningGames[id].turnState.battleIndex],
+						victimData))
+				: ['FAILED'];
 			animationData.push({
 				victimIndices: victimIndices.slice().reverse(),
 				spell,
