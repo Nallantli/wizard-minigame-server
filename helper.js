@@ -73,7 +73,7 @@ export function iterateSpell(victimIndices, spellIndex, turnState, calculatedDam
 	}
 	const spell = spells[battleData[casterIndex].hand[spellIndex].id];
 	switch (spell.type) {
-		case SPELL_TYPES.AURA:
+		case 'AURA':
 			aura = {
 				element: spell.auraElement,
 				value: spell.auraValue,
