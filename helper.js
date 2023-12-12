@@ -5,7 +5,7 @@ function criticalChance(cra, crb) {
 	return ((diff - 32) / (2 * (16 + Math.abs(diff - 32))) + 0.5) * (Math.min(cra, 100) / 100);
 }
 
-export function calculateDamages(spell, enchantments, caster, victim) {
+export function calculateDamages(spell, enchantments, caster, victim, aura) {
 	if (spell.type !== 'ATTACK_ALL' && spell.type !== 'ATTACK_BASIC') {
 		return {};
 	}
@@ -16,7 +16,7 @@ export function calculateDamages(spell, enchantments, caster, victim) {
 	const blades = caster.blades;
 	let usedBladeIds = [];
 	let totalUsedBladeIds = [];
-	let baseTilt = 1;
+	let baseTilt = 1 * (aura !== null && aura.element === spell.element ? aura.value : 1);
 	blades.forEach(({ id, value, element }, i) => {
 		if ((spell.element === element || element === 'all') && !totalUsedBladeIds.includes(id)) {
 			baseTilt *= (value + 100) / 100;
@@ -59,7 +59,9 @@ export function calculateDamages(spell, enchantments, caster, victim) {
 	};
 }
 
-export function iterateSpell(casterIndex, victimIndices, spellIndex, battleData, calculatedDamages) {
+export function iterateSpell(victimIndices, spellIndex, turnState, calculatedDamages) {
+	let { battleData, aura } = turnState;
+	const casterIndex = turnState.battleIndex;
 	if (calculatedDamages.length === 1 && calculatedDamages[0] === 'FAILED') {
 		const handSpell = battleData[casterIndex].hand[spellIndex];
 		battleData[casterIndex].battleDeck = [
@@ -67,10 +69,17 @@ export function iterateSpell(casterIndex, victimIndices, spellIndex, battleData,
 			...battleData[casterIndex].battleDeck
 		];
 		battleData[casterIndex].hand.splice(spellIndex, 1);
-		return battleData;
+		return { aura, battleData };
 	}
 	const spell = spells[battleData[casterIndex].hand[spellIndex].id];
 	switch (spell.type) {
+		case SPELL_TYPES.AURA:
+			aura = {
+				element: spell.auraElement,
+				value: spell.auraValue,
+				id: spell.id
+			};
+			break;
 		case 'HEALING_BASIC':
 			spell.heals.forEach(({ heal }) => battleData[victimIndices[0]].entity.health += heal);
 			break;
@@ -147,5 +156,8 @@ export function iterateSpell(casterIndex, victimIndices, spellIndex, battleData,
 			battleData[i].entity.health = battleData[i].entity.maxHealth;
 		}
 	}
-	return battleData;
+	return {
+		aura,
+		battleData
+	};
 }

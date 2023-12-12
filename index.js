@@ -33,7 +33,8 @@ function createGame(ws, entity) {
 		battleData: [generateBattleEntity(entity, false), null, null, null, null, null, null, null],
 		selectedCards: [null, null, null, null, null, null, null, null],
 		selectedVictims: [[], [], [], [], [], [], [], []],
-		battleIndex: -2
+		battleIndex: -2,
+		aura: null
 	};
 
 	runningGames[id] = { id, turnState, sockets: [{ ws, pos: 0, isReady: false }] };
@@ -133,7 +134,8 @@ function doRound(id) {
 						spell,
 						enchantments,
 						runningGames[id].turnState.battleData[runningGames[id].turnState.battleIndex],
-						victimData))
+						victimData,
+						runningGames[id].turnState.aura))
 				: ['FAILED'];
 			animationData.push({
 				victimIndices: victimIndices.slice().reverse(),
@@ -141,7 +143,9 @@ function doRound(id) {
 				calculatedDamages: calculatedDamages.slice().reverse(),
 				turnState: JSON.parse(JSON.stringify(runningGames[id].turnState))
 			});
-			runningGames[id].turnState.battleData = iterateSpell(runningGames[id].turnState.battleIndex, victimIndices, spellIndex, runningGames[id].turnState.battleData, calculatedDamages);
+			const iteration = iterateSpell(victimIndices, spellIndex, runningGames[id].turnState, calculatedDamages);
+			runningGames[id].turnState.battleData = iteration.battleData;
+			runningGames[id].turnState.aura = iteration.aura;
 		}
 	}
 
