@@ -285,7 +285,7 @@ server.listen(8080);
 
 const wss = new WebSocketServer({ server });
 
-function processRequest(data) {
+function processRequest(ws, data) {
 	switch (data.action) {
 		case 'CREATE_GAME': {
 			const { entity } = data;
@@ -430,7 +430,7 @@ wss.on('connection', function connection(ws) {
 	});
 	ws.on('message', (raw) => {
 		const dataArray = JSON.parse(raw);
-		dataArray.forEach(processRequest);
+		dataArray.forEach(data => processRequest(ws, data));
 	});
 
 	ws.send(JSON.stringify({
