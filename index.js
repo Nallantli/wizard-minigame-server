@@ -207,7 +207,9 @@ function shoveDownEntity(id, pos) {
 		runningGames[id].turnState.battleData[pos] = null;
 		pos--;
 	}
-	sockets[socketIndex].pos = pos;
+	if (socketIndex > -1) {
+		sockets[socketIndex].pos = pos;
+	}
 }
 
 function startGame(id) {
