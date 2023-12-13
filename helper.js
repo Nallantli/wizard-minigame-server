@@ -227,7 +227,7 @@ export const randomAI = (index, battleData) => {
 	}
 	const selectedCardOptions = randomFromList(options);
 	let selectedVictims = [];
-	if (getSpell(entityData.hand[selectedCardOptions.selectedCard].id).type === SPELL_TYPES.ATTACK_ALL) {
+	if (getSpell(entityData.hand[selectedCardOptions.selectedCard].id).type === 'ATTACK_ALL') {
 		selectedVictims = battleData.map((e, i) => ({ e, i })).filter(({ e, i }) => e !== null && canUseSpellOn(getSpell(entityData.hand[selectedCardOptions.selectedCard].id), index, i)).map(({ i }) => i);
 	} else {
 		selectedVictims = [randomFromList(selectedCardOptions.options)];
@@ -237,3 +237,17 @@ export const randomAI = (index, battleData) => {
 		selectedVictims
 	};
 };
+
+export function selectCardsForAI(battleState) {
+	const { turnState } = battleState;
+	turnState.battleData.forEach((battleEntity, i) => {
+		if (!battleEntity) {
+			return;
+		}
+		if (battleEntity.isAI) {
+			const { selectedCard, selectedVictims } = randomAI(i, turnState.battleData);
+			turnState.selectedCards[i] = selectedCard;
+			turnState.selectedVictims[i] = selectedVictims;
+		}
+	});
+}

@@ -2,7 +2,7 @@ import { WebSocketServer } from 'ws';
 import * as https from 'https';
 import * as fs from 'fs';
 
-import { calculateDamages, iterateSpell, spells, randomFromList, randomAI } from './helper.js';
+import { calculateDamages, iterateSpell, spells, randomFromList, randomAI, selectCardsForAI } from './helper.js';
 
 let runningGames = {};
 
@@ -92,6 +92,7 @@ function checkWin(id) {
 			side: 'RIGHT',
 			entities: rightStart.map(({ entity }) => entity)
 		})));
+		return true;
 	} else if (turnState.battleData.filter((e, i) => i >= 4 && e !== null).length === 0) {
 		runningGames[id].turnState.battleIndex = -3;
 		sockets.forEach(({ ws, pos }) => ws.send(JSON.stringify({
@@ -99,7 +100,9 @@ function checkWin(id) {
 			side: 'LEFT',
 			entities: leftStart.map(({ entity }) => entity)
 		})));
+		return true;
 	}
+	return false;
 }
 
 /* Randomize array in-place using Durstenfeld shuffle algorithm */
@@ -192,6 +195,8 @@ function doRound(id) {
 		selectedVictims: [[], [], [], [], [], [], [], []],
 	}
 
+	selectCardsForAI(runningGames[id]);
+
 	return {
 		animationData,
 		finalTurnState: runningGames[id].turnState
@@ -226,26 +231,27 @@ function startGame(id) {
 		if (runningGames[id].turnState.battleData[i] === null) {
 			continue;
 		}
+		console.log(runningGames[id].turnState.battleData[i]);
 
 		if (i < 4) {
 			runningGames[id].leftStart.push({
-				ws: runningGames[id].turnState.battleData[i].entity.isAI ? null : runningGames[id].sockets.find(({ pos }) => pos === i).ws,
+				ws: runningGames[id].turnState.battleData[i].isAI ? null : runningGames[id].sockets.find(({ pos }) => pos === i).ws,
 				entity: runningGames[id].turnState.battleData[i].entity
 			});
 		} else if (i >= 4) {
 			runningGames[id].rightStart.push({
-				ws: runningGames[id].turnState.battleData[i].entity.isAI ? null : runningGames[id].sockets.find(({ pos }) => pos === i).ws,
+				ws: runningGames[id].turnState.battleData[i].isAI ? null : runningGames[id].sockets.find(({ pos }) => pos === i).ws,
 				entity: runningGames[id].turnState.battleData[i].entity
 			});
 		}
 
 		if (runningGames[id].turnState.battleData[i].battleDeck === undefined) {
-			runningGames[id].turnState.battleData[i].battleDeck = [...runningGames[id].turnState.battleData[i].entity.deck];
+			runningGames[id].turnState.battleData[i].battleDeck = runningGames[id].turnState.battleData[i].entity.deck.map(id => ({ id }));
 		}
 		shuffleArray(runningGames[id].turnState.battleData[i].battleDeck);
 
 		let hand = [];
-		for (let i = 0; i < 7; i++) {
+		for (let j = 0; j < 7; j++) {
 			const card = runningGames[id].turnState.battleData[i].battleDeck.pop();
 			if (!card) {
 				break;
@@ -254,6 +260,8 @@ function startGame(id) {
 		}
 		runningGames[id].turnState.battleData[i].hand = hand;
 	}
+
+	selectCardsForAI(runningGames[id]);
 }
 
 function areAllPlayersReady(id) {
