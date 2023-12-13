@@ -279,14 +279,14 @@ function unreadyAll(id) {
 function basicCheck(ws, id) {
 	if (!gameExists(id)) {
 		ws.send(JSON.stringify({
-			action: "MOVE_SELF_FAILURE",
+			action: "FAILURE",
 			message: `Game '${id}' does not exist`
 		}));
 		return false;
 	}
 	if (!socketIsConnectedToGame(ws, id)) {
 		ws.send(JSON.stringify({
-			action: "MOVE_SELF_FAILURE",
+			action: "FAILURE",
 			message: `Socket is not connected to game '${id}'`
 		}));
 		return false;
@@ -326,21 +326,22 @@ function processRequest(ws, data) {
 			}
 			break;
 		}
-		case 'MOVE_SELF': {
-			const { id, pos } = data;
+		case 'MOVE_ENTITY': {
+			const { id, oldPos, newPos } = data;
 			if (!basicCheck(ws, id)) {
 				return;
 			}
-			if (runningGames[id].turnState.battleData[pos] !== null) {
+			if (runningGames[id].turnState.battleData[newPos] !== null) {
 				ws.send(JSON.stringify({
-					action: "MOVE_SELF_FAILURE",
-					message: `Position ${pos} is already occupied`
+					action: "FAILURE",
+					message: `Position ${newPos} is already occupied`
 				}));
 				return;
 			}
-			const oldPos = runningGames[id].sockets.find(e => e.ws === ws).pos;
-			runningGames[id].sockets.find(e => e.ws === ws).pos = pos;
-			runningGames[id].turnState.battleData[pos] = runningGames[id].turnState.battleData[oldPos];
+			if (runningGames[id].sockets.find(e => e.ws === ws)) {
+				runningGames[id].sockets.find(e => e.ws === ws).pos = newPos;
+			}
+			runningGames[id].turnState.battleData[newPos] = runningGames[id].turnState.battleData[oldPos];
 			runningGames[id].turnState.battleData[oldPos] = null;
 			for (let i = 0; i < 8; i++) {
 				if (runningGames[id].turnState.battleData[i] !== null) {
