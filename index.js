@@ -360,7 +360,7 @@ function processRequest(ws, data) {
 				}));
 				return;
 			}
-			if (runningGames[id].sockets.find(e => e.ws === ws)) {
+			if (!runningGames[id].turnState.battleData[oldPos].isAI) {
 				runningGames[id].sockets.find(e => e.ws === ws).pos = newPos;
 			}
 			runningGames[id].turnState.battleData[newPos] = runningGames[id].turnState.battleData[oldPos];
