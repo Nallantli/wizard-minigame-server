@@ -1,5 +1,13 @@
 export const spells = await (await fetch('https://raw.githubusercontent.com/Nallantli/wizard-minigame/master/spells.json')).json();
 
+function getSpell(id) {
+	return spells[id];
+}
+
+export function randomFromList(l) {
+	return l[Math.floor(Math.random() * l.length)];
+}
+
 function criticalChance(cra, crb) {
 	const diff = cra - crb;
 	return ((diff - 32) / (2 * (16 + Math.abs(diff - 32))) + 0.5) * (Math.min(cra, 100) / 100);
@@ -167,3 +175,65 @@ export function iterateSpell(victimIndices, spellIndex, turnState, calculatedDam
 		battleData
 	};
 }
+
+// -------------------------------------------------------------------------------------------------------------
+
+const spellUseTypes = {
+	TO_ALL: () => true,
+	TO_SELF: (casterIndex, victimIndex) => casterIndex === victimIndex,
+	TO_ALLIES: (casterIndex, victimIndex) => (casterIndex < 4 && victimIndex < 4) || (casterIndex >= 4 && victimIndex >= 4),
+	TO_ENEMIES: (casterIndex, victimIndex) => (casterIndex < 4 && victimIndex >= 4) || (casterIndex >= 4 && victimIndex < 4)
+};
+
+function getTotalVril(data, element) {
+	const { vril, superVril } = data;
+	if (element === data.entity.element) {
+		return superVril * 2 + vril;
+	}
+	return superVril + vril;
+}
+
+function canUseSpellOn(spell, casterIndex, victimIndex) {
+	return spellUseTypes[spell.spellUseType](casterIndex, victimIndex);
+}
+
+export const randomAI = (index, battleData) => {
+	const entityData = battleData[index];
+	const accessibleCards = entityData.hand
+		.map(({ id }, i) => ({ card: getSpell(id), i }))
+		.filter(({ card: { vrilRequired, element } }) => getTotalVril(entityData, element) >= vrilRequired);
+
+	const options = accessibleCards
+		.map(({ card, i }) => ({
+			i,
+			d: battleData
+				.map((e, i) => ({ e, selectedVictim: i }))
+				.filter(({ e }) => e !== null)
+				.filter(({ selectedVictim }) => canUseSpellOn(card, index, selectedVictim))
+		}))
+		.map(({ d, i }) => ({ selectedCard: i, options: d.map(({ selectedVictim }) => selectedVictim) }))
+		.filter(({ options }) => options.length > 0);
+
+	if (options.length === 0) {
+		return {
+			selectedCard: 'PASS'
+		}
+	}
+	if (Math.random() < 0.1) {
+		return {
+			selectedCard: 'PASS',
+			selectedVictims: []
+		};
+	}
+	const selectedCardOptions = randomFromList(options);
+	let selectedVictims = [];
+	if (getSpell(entityData.hand[selectedCardOptions.selectedCard].id).type === SPELL_TYPES.ATTACK_ALL) {
+		selectedVictims = battleData.map((e, i) => ({ e, i })).filter(({ e, i }) => e !== null && canUseSpellOn(getSpell(entityData.hand[selectedCardOptions.selectedCard].id), index, i)).map(({ i }) => i);
+	} else {
+		selectedVictims = [randomFromList(selectedCardOptions.options)];
+	}
+	return {
+		selectedCard: selectedCardOptions.selectedCard,
+		selectedVictims
+	};
+};

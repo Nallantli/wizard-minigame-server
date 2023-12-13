@@ -2,7 +2,7 @@ import { WebSocketServer } from 'ws';
 import * as https from 'https';
 import * as fs from 'fs';
 
-import { calculateDamages, iterateSpell, spells } from './helper.js';
+import { calculateDamages, iterateSpell, spells, randomFromList, randomAI } from './helper.js';
 
 let runningGames = {};
 
@@ -10,10 +10,6 @@ const ID_CHARS = [
 	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 	'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'
 ];
-
-function randomFromList(l) {
-	return l[Math.floor(Math.random() * l.length)];
-}
 
 function generateId() {
 	let id = '';
@@ -65,13 +61,15 @@ function propagateState(id) {
 function joinGame(id, ws, entity) {
 	if (gameExists(id) && runningGames[id].turnState.battleIndex === -2) {
 		const nextEmptyPos = runningGames[id].turnState.battleData.findIndex(e => e === null);
-		runningGames[id].sockets.push({
-			ws,
-			pos: nextEmptyPos,
-			isReady: false,
-			isHost: false
-		});
-		runningGames[id].turnState.battleData[nextEmptyPos] = generateBattleEntity(entity, false);
+		if (ws) {
+			runningGames[id].sockets.push({
+				ws,
+				pos: nextEmptyPos,
+				isReady: false,
+				isHost: false
+			});
+		}
+		runningGames[id].turnState.battleData[nextEmptyPos] = generateBattleEntity(entity, ws === undefined);
 		return true;
 	}
 	return false;
@@ -228,17 +226,25 @@ function startGame(id) {
 		}
 
 		if (i < 4) {
-			runningGames[id].leftStart.push({ ws: runningGames[id].sockets.find(({ pos }) => pos === i).ws, entity: runningGames[id].turnState.battleData[i].entity });
+			runningGames[id].leftStart.push({
+				ws: runningGames[id].turnState.battleData[i].entity.isAI ? null : runningGames[id].sockets.find(({ pos }) => pos === i).ws,
+				entity: runningGames[id].turnState.battleData[i].entity
+			});
 		} else if (i >= 4) {
-			runningGames[id].rightStart.push({ ws: runningGames[id].sockets.find(({ pos }) => pos === i).ws, entity: runningGames[id].turnState.battleData[i].entity });
+			runningGames[id].rightStart.push({
+				ws: runningGames[id].turnState.battleData[i].entity.isAI ? null : runningGames[id].sockets.find(({ pos }) => pos === i).ws,
+				entity: runningGames[id].turnState.battleData[i].entity
+			});
 		}
 
-		const battleDeck = runningGames[id].turnState.battleData[i].battleDeck
-		shuffleArray(battleDeck);
+		if (runningGames[id].turnState.battleData[i].battleDeck === undefined) {
+			runningGames[id].turnState.battleData[i].battleData = [...runningGames[id].turnState.battleData[i].entity.deck];
+		}
+		shuffleArray(runningGames[id].turnState.battleData[i].battleDeck);
 
 		let hand = [];
 		for (let i = 0; i < 7; i++) {
-			const card = battleDeck.pop();
+			const card = runningGames[id].turnState.battleData[i].battleDeck.pop();
 			if (!card) {
 				break;
 			}
@@ -321,6 +327,20 @@ function processRequest(ws, data) {
 				ws.send(JSON.stringify({
 					action: "JOIN_FAILURE",
 					message: `Cannot join game '${id}'`
+				}));
+				return;
+			}
+			break;
+		}
+		case 'ADD_ENTITY': {
+			const { id, entity } = data;
+			if (joinGame(id, undefined, entity)) {
+				unreadyAll(id);
+				propagateState(id);
+			} else {
+				ws.send(JSON.stringify({
+					action: "FAILURE",
+					message: `Cannot add entity to game '${id}'`
 				}));
 				return;
 			}
