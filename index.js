@@ -37,7 +37,16 @@ function createGame(ws, entity) {
 		aura: null
 	};
 
-	runningGames[id] = { id, turnState, sockets: [{ ws, pos: 0, isReady: false }] };
+	runningGames[id] = {
+		id,
+		turnState,
+		sockets: [{
+			ws,
+			pos: 0,
+			isReady: false,
+			isHost: true
+		}]
+	};
 
 	return id;
 }
@@ -49,14 +58,19 @@ function propagateState(id) {
 		turnState,
 		id,
 		playerIndex: pos,
-		players: sockets.map(({ pos, isReady }) => ({ pos, isReady }))
+		players: sockets.map(({ pos, isReady, isHost }) => ({ pos, isReady, isHost }))
 	})));
 }
 
 function joinGame(id, ws, entity) {
 	if (gameExists(id) && runningGames[id].turnState.battleIndex === -2) {
 		const nextEmptyPos = runningGames[id].turnState.battleData.findIndex(e => e === null);
-		runningGames[id].sockets.push({ ws, pos: nextEmptyPos, isReady: false });
+		runningGames[id].sockets.push({
+			ws,
+			pos: nextEmptyPos,
+			isReady: false,
+			isHost: false
+		});
 		runningGames[id].turnState.battleData[nextEmptyPos] = generateBattleEntity(entity, false);
 		return true;
 	}
@@ -412,6 +426,7 @@ wss.on('connection', function connection(ws) {
 		if (game) {
 			const id = game[0];
 			const wsIndex = runningGames[id].sockets.findIndex(e => e.ws === ws);
+			const wasHost = runningGames[id].sockets[wsIndex].isHost;
 			runningGames[id].turnState.battleData[runningGames[id].sockets[wsIndex].pos] = null;
 			runningGames[id].sockets.splice(wsIndex, 1);
 			if (runningGames[id].sockets.length === 0) {
@@ -424,6 +439,9 @@ wss.on('connection', function connection(ws) {
 							shoveDownEntity(id, i);
 						}
 					}
+				}
+				if (wasHost) {
+					runningGames[id].sockets[0].isHost = true;
 				}
 				propagateState(id);
 				if (runningGames[id].turnState.battleIndex > -2) {
