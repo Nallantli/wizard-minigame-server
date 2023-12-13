@@ -231,7 +231,6 @@ function startGame(id) {
 		if (runningGames[id].turnState.battleData[i] === null) {
 			continue;
 		}
-		console.log(runningGames[id].turnState.battleData[i]);
 
 		if (i < 4) {
 			runningGames[id].leftStart.push({
@@ -373,6 +372,35 @@ function processRequest(ws, data) {
 			}
 			runningGames[id].turnState.battleData[newPos] = runningGames[id].turnState.battleData[oldPos];
 			runningGames[id].turnState.battleData[oldPos] = null;
+			for (let i = 0; i < 8; i++) {
+				if (runningGames[id].turnState.battleData[i] !== null) {
+					shoveDownEntity(id, i);
+				}
+			}
+			unreadyAll(id);
+			propagateState(id);
+			break;
+		}
+		case 'REMOVE_ENTITY': {
+			const { id, pos } = data;
+			if (!basicCheck(ws, id)) {
+				return;
+			}
+			if (runningGames[id].turnState.battleData[pos] === null) {
+				ws.send(JSON.stringify({
+					action: "FAILURE",
+					message: `No entity at position ${pos}`
+				}));
+				return;
+			}
+			if (!runningGames[id].turnState.battleData[pos].isAI) {
+				ws.send(JSON.stringify({
+					action: "FAILURE",
+					message: `Entity at position ${pos} is not AI`
+				}));
+				return;
+			}
+			runningGames[id].turnState.battleData[pos] = null;
 			for (let i = 0; i < 8; i++) {
 				if (runningGames[id].turnState.battleData[i] !== null) {
 					shoveDownEntity(id, i);
