@@ -240,7 +240,7 @@ function startGame(id) {
 		}
 
 		if (runningGames[id].turnState.battleData[i].battleDeck === undefined) {
-			runningGames[id].turnState.battleData[i].battleData = [...runningGames[id].turnState.battleData[i].entity.deck];
+			runningGames[id].turnState.battleData[i].battleDeck = [...runningGames[id].turnState.battleData[i].entity.deck];
 		}
 		shuffleArray(runningGames[id].turnState.battleData[i].battleDeck);
 
