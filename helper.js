@@ -111,7 +111,7 @@ export function iterateSpell(victimIndices, spellIndex, turnState, calculatedDam
 						}
 						battleData[victimIndex].entity.health += damage;
 						if (steal) {
-							battleData[casterIndex].entity.health -= damage * steal;
+							battleData[casterIndex].entity.health -= Math.round(damage * steal);
 						}
 					});
 					battleData[casterIndex].blades = battleData[casterIndex].blades.filter((_, j) => !usedBladeIds.map(({ index }) => index).includes(j));
