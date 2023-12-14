@@ -88,6 +88,7 @@ export function iterateSpell(victimIndices, spellIndex, turnState, calculatedDam
 		return { aura, battleData };
 	}
 	const spell = spells[battleData[casterIndex].hand[spellIndex].id];
+	const isPer = spell.damages ? spell.damages.find(({ isPer }) => isPer) : false;
 	switch (spell.type) {
 		case 'AURA':
 			aura = {
